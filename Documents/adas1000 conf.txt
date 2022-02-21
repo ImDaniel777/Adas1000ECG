@@ -1,0 +1,45 @@
+ECGCTL REG:
+		 31      24
+	0x81 1000 0001	8-Write 1-address = 1 for ECGCTL
+		 23 	 16
+	  F8 1111 1000	F-enables la,ll,ra,v1en | 8-enables v2en
+		 15      8
+	  04 0000 0100 4-CHCONFIG 1-differential input(analog lead mode) 0-single-enden input(digital lead mode or electrode mode)
+				   b9-8=gain 00-x1.4
+		 7       0
+	  AE 1010 1110	b5-master en b1-power enable
+
+PACECTL REG:
+		 31      24
+	0x84 1000 0100	8-write 4-PACECTL reg
+         23	     16
+	  00 0000 0000	reserved 0
+	     15      8
+	  0F 0000 1111	0-reserved F-pace filters enabled 
+	     7       0
+	  88 1000 1000 b8-7 = lead avf , b4-3 = lead2 b210 pace disabled
+	  
+CMREFCTL REG:
+		 31      24
+	0X85 1000 0101	8-write 5-CMREFCTL
+	     23      16
+	  E0 1110 0000	E-Commong mode elctrode LACM,LLCM,RACM
+	     15      8
+	  00 0000 0000
+	     7       0
+	  0A 0000 1010 b3-common mode output, b1-right leg reference
+
+FRMCTL REG:
+
+	0x8A
+
+	  07 0000 0111 0-leads included in frame 7-reserved
+	  
+	  90 1001 0000 b15-reserved, b14,13=pace/respiration included in frame, b12=respiration phase excluded from frame
+					
+	  00		output data rate = 2kHz
+	  
+	  send 0x40 0100 0000 = read from frame header
+	  
+	  SDO-MISO-21
+	  SDI-MOSI-19
