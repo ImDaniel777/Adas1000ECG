@@ -11,11 +11,11 @@ drdy = 3
 t = count()
 
 fieldnames = ["t", "LEAD1/LA", "LEAD2/LL", "LEAD3/RA", "V1'/V1", "V2'/V2", "PACE", "RESPPM", "RESPPH", "LOFF", "GPIO", "CRC"]
-outputWord = [ 0x00, 0x00, 0x00,0x00, 0x00, 0x00, 0x00, 0x00,0x00]
+outputWord = [ 0x00, 0x00,0x00, 0x00, 0x00, 0x00, 0x00,0x00, 0x00, 0x00]
 
 spi = spidev.SpiDev()
 spi.open(0, 0)
-spi.max_speed_hz = 1953000 #adas1000 frame rate = 2kHz ==> min spi clock = 768khz
+spi.max_speed_hz = 976000  #adas1000 frame rate = 2kHz ==> min spi clock = 768khz
 spi.bits_per_word = 8
 
 ADASinit = [0x81, 0xF8, 0x04, 0xAE,
@@ -40,12 +40,24 @@ def adas1000_setRegister(regAddress, regValue):
     CShigh()
 def reset():
     adas1000_setRegister(0x01, 1)
-    adas1000_setRegister(0x00, 0)    
+    adas1000_setRegister(0x00, 0)
+def adas1000_wait():
+    readCmd = [0x00, 0x00, 0x00, 0x00]
+    readData = [0x00, 0x00, 0x00, 0x00]
+    readCmd[0] = 0x01;
+    CSlow()
+    spi.writebytes(readCmd)
+    CShigh()
+    CSlow()
+    readData = spi.readbytes(4)
+    CShigh()
+    readData = [hex(x) for x in readData]
+    adas1000_setRegister(0x00, 0) 
 def adas1000Init():
     adas1000_setRegister(0x01, 0xF804AE)
     adas1000_setRegister(0x04, 0x000F88)
     adas1000_setRegister(0x05, 0xE0000A)
-    adas1000_setRegister(0x0A, 0x079604)
+    adas1000_setRegister(0x0A, 0x079400)
 
 def adas1000_readRegister(reg_addr):
     readCmd = [0x00, 0x00, 0x00, 0x00]
@@ -76,12 +88,14 @@ def adas1000_readData():
     CSlow()
     #spi.xfer([0x40],976000,5,8)
     spi.writebytes([0x40])
-    readData = spi.readbytes(36)
+    readData = spi.readbytes(40)
     CShigh()
+    #adas1000_setRegister(0x00, 0) 
     readData = readData[::-1]
     readData = [format(x,'02x') for x in readData]
+   # print(readData)
     j = 0
-    for i in range (0,36,4):
+    for i in range (0,40,4):
         temp = readData[i:i+4]
         word = (''.join(map(str,temp)))
         outputWord[j] = word
@@ -90,14 +104,16 @@ def adas1000_readData():
     print("\n")
 def adas1000_readData2(n):
     while n != 0:
+        adas1000_setRegister(0x00, 0) 
         readData = []
+        adas1000Init()
         CSlow()
+        
 
         #spi.xfer([0x40],976000,5,8)
         spi.writebytes([0x40])
         readData = spi.readbytes(36)
         CShigh()
-        adas1000_readRegister(0x0A)
         readData = readData[::-1]
         readData = [format(x,'02x') for x in readData]
         print(readData)
@@ -108,38 +124,21 @@ def adas1000_readData2(n):
             outputWord[j] = word
             j=j+1
             #print(word)
-        #print("\n")
-        with open('data.csv', 'a') as csvFile:
-            csv_writer = csv.DictWriter(csvFile, fieldnames=fieldnames)
-            
-            info = {
-                "t":next(t),
-                "LEAD1/LA": outputWord[6],
-                "LEAD2/LL":outputWord[5],
-                "LEAD3/RA":outputWord[4],
-                "V1'/V1":outputWord[4],
-                "V2'/V2":outputWord[3],
-                "PACE":outputWord[2],
-                "RESPPM":outputWord[1],
-                #"RESPPH":outputWord[3],
-                "LOFF":outputWord[0],
-                #"GPIO":outputWord[1],
-                #"CRC":outputWord[0]
-           }
-            csv_writer.writerow(info)
+        print("\n")
         n = n-1
 #Example how to read and write a register
 #adas1000_setRegister(0x05, 0xE0000B)
 #adas1000_readRegister(0x05)
-#adas1000_setRegister(0x00, 0)
-with open('data.csv', 'w') as csvFile:
-    csv_writer = csv.DictWriter(csvFile, fieldnames=fieldnames)
-    csv_writer.writeheader()    
-        
+#adas1000_setRegister(0x00, 0)    
 reset()
 adas1000Init()
+#time.sleep(0.100)
 adas1000_check()
-#adas1000_readData2(100)
+adas1000_readData()
+#time.sleep(0.100)
+adas1000_readData()
+#time.sleep(0.010)    
+adas1000_readData()
 
 #reset()        
 #adas1000Init()
@@ -148,33 +147,32 @@ adas1000_check()
 #with open('data.csv', 'w') as csvFile:
 #    csv_writer = csv.DictWriter(csvFile, fieldnames=fieldnames)
 #    csv_writer.writeheader()
-try:
-    while True:
-        #adas1000Init()
-        #if GPIO.input(drdy) == 0 :
-        adas1000_readData()
-        adas1000_readRegister(0x0A)
-
-        with open('data.csv', 'a') as csvFile:
-            csv_writer = csv.DictWriter(csvFile, fieldnames=fieldnames)
-            
-            info = {
-                "t":next(t),
-                "LEAD1/LA": outputWord[6],
-                "LEAD2/LL":outputWord[5],
-                "LEAD3/RA":outputWord[4],
-                "V1'/V1":outputWord[3],
-                "V2'/V2":outputWord[2],
-                "PACE":outputWord[1],
-                "RESPPM":outputWord[0],
-                #"RESPPH":outputWord[3],
-                "LOFF":outputWord[0],
-                #"GPIO":outputWord[1],
-                #"CRC":outputWord[0]
-           }
-            csv_writer.writerow(info)
-        #time.sleep(0.010)
-finally:
-    spi.close()
+#try:
+#    while True:
+#        adas1000Init()
+#        #if GPIO.input(drdy) == 0 :
+#        adas1000_readData()
+#        with open('data.csv', 'a') as csvFile:
+#            csv_writer = csv.DictWriter(csvFile, fieldnames=fieldnames)
+#            
+#            info = {
+#                "t":next(t),
+#                "LEAD1/LA": outputWord[7],
+#                "LEAD2/LL":outputWord[6],
+#                "LEAD3/RA":outputWord[5],
+#                "V1'/V1":outputWord[4],
+#                "V2'/V2":outputWord[3],
+#                "PACE":outputWord[2],
+#                "RESPPM":outputWord[1],
+#                #"RESPPH":outputWord[3],
+#                "LOFF":outputWord[0],
+#                #"GPIO":outputWord[1],
+#                #"CRC":outputWord[0]
+#           }
+#            csv_writer.writerow(info)   
+#        time.sleep(0.010)
+#
+#finally:
+#    spi.close()
     
     
